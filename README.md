@@ -25,7 +25,7 @@ Gespeichert wird pro Handy nur eine zufällige Kennung, die Wahl und die Uhrzeit
 
 1. Firebase-Projekt nur für dieses Tool, Realtime Database in europe-west1, gesperrter Modus.
 2. In der Firebase-Konsole unter «Realtime Database → Regeln» den Inhalt von `firebase/regeln.json` einfügen und veröffentlichen.
-3. Die Datenbank-Adresse in `bali/index.html` und `bali/beamer.html` bei `CONFIG.datenbank` eintragen.
+3. Die Datenbank-Adresse steht in `bali/index.html` und `bali/beamer.html` bei `CONFIG.datenbank` (ph-fun-bali, europe-west1).
 4. Nach der Lektion die Daten in der Konsole unter `bali-wasser` löschen.
 
 Die Regeln sind am Firebase-Emulator geprüft: Schreiben nur gültiger Stimmen (`ja`, `bed`, `nein`, Serverzeit) unter `bali-wasser/oeffentlich/{sitzung}/{vorher|nachher}/{kennung}`, kein Löschen, kein Schreiben oder Lesen ausserhalb.
