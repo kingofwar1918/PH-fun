@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Wo steht ihr? (Beamer)</title>
+<style>
+:root{
+  --bg:#ffffff; --text:#16202b; --gedaempft:#5b6779; --rand:#d9dfe7; --flaeche:#f1f4f8;
+  --ja:#1f5f99; --bed:#6b4f9a; --nein:#2b7a73; --ok:#1e7f4f; --warn:#8a6d1f;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);
+     color:var(--text);font-size:clamp(16px,1.35vw,28px);line-height:1.3}
+.rahmen{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;padding:2.2vh 3vw}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:2vw;
+       border-bottom:2px solid var(--rand);padding-bottom:1.2vh}
+h1{font-size:2.1em;margin:0}
+.leitfrage{color:var(--gedaempft);font-size:1.05em}
+nav{display:flex;gap:.5em;flex-wrap:wrap}
+nav button,.werkzeug button{font:inherit;font-size:.8em;padding:.45em .9em;border-radius:.5em;
+       border:1px solid var(--rand);background:#fff;cursor:pointer}
+nav button.aktiv{background:var(--text);color:#fff;border-color:var(--text)}
+main{display:grid;align-items:center;padding:2vh 0}
+.zwei{display:grid;grid-template-columns:minmax(0,34%) minmax(0,1fr);gap:4vw;align-items:center}
+.qr{text-align:center}
+.qr img{width:100%;max-width:42vh;image-rendering:pixelated;border:1px solid var(--rand);border-radius:.4em}
+.qr .adresse{font-size:.9em;color:var(--gedaempft);margin-top:.6em;word-break:break-all}
+.qr .runde{font-size:1.3em;font-weight:700;margin-bottom:.4em}
+.balken{display:grid;gap:2.4vh}
+.zeile{display:grid;grid-template-columns:9.5em 1fr 4.6em;gap:1em;align-items:center}
+.zeile .name{font-weight:700;font-size:1.1em}
+.spur{height:6.2vh;background:var(--flaeche);border-radius:.4em;overflow:hidden;position:relative}
+.spur i{position:absolute;left:0;top:0;bottom:0;border-radius:.4em;transition:width .5s}
+.spur.duenn{height:3.4vh}
+.zahl{font-size:1.6em;font-weight:700;text-align:right}
+.zahl small{display:block;font-size:.5em;color:var(--gedaempft);font-weight:400}
+.total{margin-top:2.4vh;font-size:1.1em;color:var(--gedaempft)}
+.vergleich .zeile{grid-template-columns:9.5em 1fr 6.5em}
+.vergleich .doppel{display:grid;gap:.6vh}
+.legende{display:flex;gap:2em;color:var(--gedaempft);font-size:.9em;margin-bottom:1.6vh}
+.legende span::before{content:"";display:inline-block;width:1.4em;height:.8em;margin-right:.4em;
+       vertical-align:middle;border-radius:.2em;background:var(--gedaempft)}
+.legende .v::before{opacity:.35}
+.wechsel{margin-top:3vh;display:grid;grid-template-columns:auto 1fr;gap:3vw;align-items:start}
+.wechsel .gross{font-size:2.4em;font-weight:800;line-height:1}
+.wechsel ul{margin:0;padding-left:1.2em}
+footer{display:flex;justify-content:space-between;align-items:center;gap:1em;
+       font-size:.75em;color:var(--gedaempft);border-top:1px solid var(--rand);padding-top:1vh}
+.werkzeug{display:flex;gap:.5em;align-items:center;flex-wrap:wrap}
+.dialog-hg{position:fixed;inset:0;background:rgba(20,28,38,.45);display:flex;align-items:center;
+           justify-content:center;z-index:50}
+.dialog{background:#fff;border-radius:.8em;padding:1.4em;max-width:34em}
+.dialog button{font:inherit;padding:.5em 1em;border-radius:.5em;border:1px solid var(--rand);
+               background:#fff;cursor:pointer;margin-right:.5em}
+.dialog .primaer{background:var(--text);color:#fff;border-color:var(--text)}
+.leer{color:var(--gedaempft);font-size:1.2em}
+.warn{color:var(--warn)}
+.verborgen{display:none !important}
+@media print{body{font-size:12pt}nav,.werkzeug,.qr img{display:none !important}.rahmen{min-height:0}}
+</style>
+</head>
+<body>
+<div class="rahmen">
+  <header>
+    <div>
+      <h1>Wo steht ihr?</h1>
+      <div class="leitfrage">Antrag: 500 Hotelzimmer auf Reisland bei Tabanan · Ja, Ja unter Bedingungen oder Nein?</div>
+    </div>
+    <nav id="nav"></nav>
+  </header>
+  <main id="buehne"></main>
+  <footer>
+    <span id="status">Verbinde …</span>
+    <span class="werkzeug">
+      <span id="sitzungInfo"></span>
+      <button id="neu">Neu zählen ab jetzt</button>
+      <button id="vollbild">Vollbild</button>
+    </span>
+  </footer>
+</div>
+
+<script>
+/* ========================================================================
+   1. INHALT
+   ======================================================================== */
+const DATEN = {
+  wahl: [
+    { w: "ja",   text: "Ja",                   farbe: "var(--ja)" },
+    { w: "bed",  text: "Ja unter Bedingungen", farbe: "var(--bed)" },
+    { w: "nein", text: "Nein",                 farbe: "var(--nein)" }
+  ],
+  ansichten: [
+    { id: "vorher",    text: "1 Vorher" },
+    { id: "nachher",   text: "2 Nachher" },
+    { id: "vergleich", text: "3 Vergleich" }
+  ],
+  // Öffentliche Adresse der Handy-Seite (ohne https://), für die Anzeige unter dem QR-Code
+  adresse: "kingofwar1918.github.io/PH-fun/bali",
+  // Für diese Sitzungen liegen QR-Codes als Bild bei
+  qrSitzungen: ["seminar", "probe"]
+};
+
+const CONFIG = {
+  datenbank: "https://DATENBANK-EINTRAGEN.europe-west1.firebasedatabase.app",
+  projekt: "bali-wasser/oeffentlich",
+  sitzungStandard: "seminar",
+  taktMs: 2000
+};
+
+/* ========================================================================
+   2. SPEICHER
+   ======================================================================== */
+const Speicher = (() => {
+  let vorhanden = false, ersatz = {};
+  try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); vorhanden = true; }
+  catch (e) { vorhanden = false; }
+  return {
+    lies(k, standard) {
+      try { const roh = vorhanden ? localStorage.getItem(k) : ersatz[k];
+            return roh == null ? standard : JSON.parse(roh); }
+      catch (e) { return standard; }
+    },
+    schreib(k, wert) {
+      try { const roh = JSON.stringify(wert);
+            if (vorhanden) localStorage.setItem(k, roh); else ersatz[k] = roh; }
+      catch (e) {}
+    }
+  };
+})();
+
+/* ========================================================================
+   3. HILFSMITTEL
+   ======================================================================== */
+const $ = (s) => document.querySelector(s);
+function el(tag, attr = {}, ...kinder) {
+  const k = document.createElement(tag);
+  for (const [n, w] of Object.entries(attr)) {
+    if (n === "class") k.className = w;
+    else if (n.startsWith("on")) k.addEventListener(n.slice(2), w);
+    else if (w != null) k.setAttribute(n, w);
+  }
+  for (const c of kinder.flat()) if (c != null) k.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return k;
+}
+function frage(text, beiJa, jaText) {
+  const hg = el("div", { class: "dialog-hg" });
+  const zu = () => hg.remove();
+  hg.append(el("div", { class: "dialog" }, el("p", {}, text),
+    el("div", {}, el("button", { class: "primaer", onclick: () => { zu(); beiJa(); } }, jaText),
+                  el("button", { onclick: zu }, "Abbrechen"))));
+  document.body.append(hg);
+}
+const prozent = (n, total) => total ? Math.round(n / total * 100) : 0;
+
+/* ========================================================================
+   4. ZUSTAND
+   ======================================================================== */
+const parameter = new URLSearchParams(location.search);
+const sitzung = (parameter.get("s") || CONFIG.sitzungStandard).toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24) || CONFIG.sitzungStandard;
+const startAnsicht = ({ v: "vorher", n: "nachher", x: "vergleich" })[parameter.get("a")] || "vorher";
+const Zustand = { ansicht: startAnsicht, daten: { vorher: {}, nachher: {} }, signatur: null,
+                  stand: null, fehler: null };
+const ab = () => Speicher.lies(`ab_${sitzung}`, 0);
+
+function gefiltert(runde) {
+  const roh = (Zustand.daten && Zustand.daten[runde]) || {};
+  const grenze = ab(); const aus = {};
+  for (const [id, e] of Object.entries(roh)) {
+    if (e && typeof e.w === "string" && typeof e.t === "number" && e.t >= grenze) aus[id] = e.w;
+  }
+  return aus;
+}
+function zaehlen(stimmen) {
+  const z = { ja: 0, bed: 0, nein: 0 };
+  for (const w of Object.values(stimmen)) if (w in z) z[w]++;
+  return z;
+}
+
+/* ========================================================================
+   5. ANSICHTEN
+   ======================================================================== */
+function navigation() {
+  $("#nav").replaceChildren(...DATEN.ansichten.map(a => el("button", {
+    class: Zustand.ansicht === a.id ? "aktiv" : "",
+    onclick: () => { Zustand.ansicht = a.id; zeichnen(); } }, a.text)));
+}
+
+function qrBlock(runde) {
+  const r = runde === "vorher" ? "v" : "n";
+  const zusatz = sitzung !== CONFIG.sitzungStandard ? `&s=${sitzung}` : "";
+  const hatBild = DATEN.qrSitzungen.includes(sitzung);
+  return el("div", { class: "qr" },
+    el("div", { class: "runde" }, runde === "vorher" ? "Runde 1: vorher" : "Runde 2: nachher"),
+    hatBild ? el("img", { src: `qr-${sitzung}-${runde}.png`, alt: "QR-Code zur Abstimmung" }) : null,
+    el("div", { class: "adresse" }, `${DATEN.adresse}/?r=${r}${zusatz}`));
+}
+
+function balken(stimmen) {
+  const z = zaehlen(stimmen); const total = Object.keys(stimmen).length;
+  return el("div", {},
+    el("div", { class: "balken" }, DATEN.wahl.map(o =>
+      el("div", { class: "zeile" },
+        el("div", { class: "name" }, o.text),
+        el("div", { class: "spur" }, el("i", { style: `width:${prozent(z[o.w], total)}%;background:${o.farbe}` })),
+        el("div", { class: "zahl" }, z[o.w], el("small", {}, `${prozent(z[o.w], total)} %`))))),
+    el("div", { class: "total" }, total === 1 ? "1 Stimme" : `${total} Stimmen`));
+}
+
+function rundenBild(runde) {
+  return el("div", { class: "zwei" }, qrBlock(runde), balken(gefiltert(runde)));
+}
+
+function vergleichBild() {
+  const v = gefiltert("vorher"), n = gefiltert("nachher");
+  const zv = zaehlen(v), zn = zaehlen(n);
+  const tv = Object.keys(v).length, tn = Object.keys(n).length;
+  const beide = Object.keys(n).filter(id => id in v);
+  const gewechselt = beide.filter(id => v[id] !== n[id]);
+  const wege = {};
+  for (const id of gewechselt) { const k = `${v[id]}>${n[id]}`; wege[k] = (wege[k] || 0) + 1; }
+  const text = (w) => DATEN.wahl.find(o => o.w === w).text;
+
+  if (!tv && !tn) return el("div", { class: "leer" }, "Noch keine Stimmen.");
+
+  return el("div", { class: "vergleich" },
+    el("div", { class: "legende" },
+      el("span", { class: "v" }, `vorher (${tv})`), el("span", {}, `nachher (${tn})`)),
+    el("div", { class: "balken" }, DATEN.wahl.map(o =>
+      el("div", { class: "zeile" },
+        el("div", { class: "name" }, o.text),
+        el("div", { class: "doppel" },
+          el("div", { class: "spur duenn" }, el("i", { style: `width:${prozent(zv[o.w], tv)}%;background:${o.farbe};opacity:.35` })),
+          el("div", { class: "spur duenn" }, el("i", { style: `width:${prozent(zn[o.w], tn)}%;background:${o.farbe}` }))),
+        el("div", { class: "zahl" }, `${zv[o.w]} → ${zn[o.w]}`)))),
+    el("div", { class: "wechsel" },
+      el("div", {},
+        el("div", { class: "gross" }, `${gewechselt.length} von ${beide.length}`),
+        el("div", {}, "haben gewechselt"),
+        el("div", { class: "gedaempft", style: "font-size:.8em;color:var(--gedaempft)" },
+          "gezählt sind Handys, die in beiden Runden abgestimmt haben")),
+      gewechselt.length ? el("ul", {}, Object.entries(wege).sort((a, b) => b[1] - a[1]).map(([k, z]) => {
+        const [a, b] = k.split(">");
+        return el("li", {}, `${text(a)} → ${text(b)}: ${z}`);
+      })) : el("div", {}, beide.length ? "Alle sind bei ihrer Position geblieben." : "")));
+}
+
+function zeichnen() {
+  navigation();
+  const b = $("#buehne");
+  b.replaceChildren(Zustand.ansicht === "vergleich" ? vergleichBild() : rundenBild(Zustand.ansicht));
+  $("#sitzungInfo").textContent = sitzung !== CONFIG.sitzungStandard ? `Sitzung: ${sitzung}` : "";
+  const st = $("#status");
+  if (Zustand.fehler) { st.textContent = Zustand.fehler; st.className = "warn"; }
+  else if (Zustand.stand) { st.textContent = `Aktualisiert ${Zustand.stand.toLocaleTimeString("de-CH")}${ab() ? " · gezählt ab " + new Date(ab()).toLocaleTimeString("de-CH") : ""}`; st.className = ""; }
+}
+
+/* ========================================================================
+   6. ABGLEICH
+   ======================================================================== */
+let taktId = null;
+async function holen() {
+  try {
+    const a = await fetch(`${CONFIG.datenbank.replace(/\/$/, "")}/${CONFIG.projekt}/${sitzung}.json`);
+    if (!a.ok) { Zustand.fehler = `Datenbank antwortet nicht (HTTP ${a.status})`; zeichnen(); return; }
+    const d = (await a.json()) || {};
+    Zustand.daten = { vorher: d.vorher || {}, nachher: d.nachher || {} };
+    Zustand.fehler = null; Zustand.stand = new Date();
+    const sig = JSON.stringify(Zustand.daten);
+    if (sig !== Zustand.signatur) { Zustand.signatur = sig; zeichnen(); }
+    else $("#status").textContent = `Aktualisiert ${Zustand.stand.toLocaleTimeString("de-CH")}${ab() ? " · gezählt ab " + new Date(ab()).toLocaleTimeString("de-CH") : ""}`;
+  } catch (e) { Zustand.fehler = "Keine Verbindung. Die Abstimmung im Raum läuft weiter."; zeichnen(); }
+}
+function starten() { if (!taktId) { holen(); taktId = setInterval(holen, CONFIG.taktMs); } }
+function pausieren() { if (taktId) { clearInterval(taktId); taktId = null; } }
+document.addEventListener("visibilitychange", () => document.hidden ? pausieren() : starten());
+
+/* ========================================================================
+   7. BEDIENUNG – Klicker (Pfeile, Bild auf/ab) und Tasten 1 bis 3
+   ======================================================================== */
+document.addEventListener("keydown", (e) => {
+  const ids = DATEN.ansichten.map(a => a.id);
+  let i = ids.indexOf(Zustand.ansicht);
+  if (["ArrowRight", "PageDown", " "].includes(e.key)) i = Math.min(i + 1, ids.length - 1);
+  else if (["ArrowLeft", "PageUp"].includes(e.key)) i = Math.max(i - 1, 0);
+  else if (["1", "2", "3"].includes(e.key)) i = Number(e.key) - 1;
+  else return;
+  e.preventDefault(); Zustand.ansicht = ids[i]; zeichnen();
+});
+$("#neu").addEventListener("click", () => frage(
+  "Ab jetzt neu zählen? Ältere Stimmen werden auf diesem Gerät ausgeblendet (in der Datenbank bleiben sie).",
+  () => { Speicher.schreib(`ab_${sitzung}`, Date.now()); Zustand.signatur = null; zeichnen(); },
+  "Neu zählen"));
+$("#vollbild").addEventListener("click", () => {
+  if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  else if (document.exitFullscreen) document.exitFullscreen();
+});
+
+zeichnen();
+starten();
+</script>
+</body>
+</html>

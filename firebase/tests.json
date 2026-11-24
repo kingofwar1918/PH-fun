@@ -1,0 +1,6 @@
+[
+  {"pfad": "bali-wasser/oeffentlich",                                "lesen": "immer", "schreiben": "nie"},
+  {"pfad": "bali-wasser/oeffentlich/seminar/vorher/abcdefghijkl12",  "lesen": "immer", "schreiben": "bedingt"},
+  {"pfad": "bali-wasser",                                            "lesen": "nie",   "schreiben": "nie"},
+  {"pfad": "gibtesnicht",                                            "lesen": "nie",   "schreiben": "nie"}
+]
