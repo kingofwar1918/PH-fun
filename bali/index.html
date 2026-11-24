@@ -189,7 +189,12 @@ function abstimmung() {
       vorherWahl ? el("p", { class: "klein" }, `In Runde 1 hast du «${textZu(vorherWahl)}» gewählt.`) : null,
       el("div", { class: "wahl" }, knoepfe),
       status,
-      el("p", { class: "klein", style: "margin-top:12px" }, R.hinweis)));
+      el("p", { class: "klein", style: "margin-top:12px" }, R.hinweis)),
+    runde === "vorher" ? el("div", { class: "karte" },
+      el("p", { class: "klein", style: "margin:0 0 8px" }, "Lass diese Seite offen. Nach der Konferenz geht es hier weiter:"),
+      el("div", { class: "runden" },
+        el("button", { onclick: () => location.search = `?r=n${sitzung !== CONFIG.sitzungStandard ? "&s=" + sitzung : ""}` },
+          "Zur Runde 2 (nach der Konferenz)"))) : null);
 
   if (gewaehlt) zeigeStatus(status, "ok", `Gezählt: «${textZu(gewaehlt)}». Du kannst noch wechseln.`);
 }
